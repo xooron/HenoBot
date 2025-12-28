@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TON Clicker Legacy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --ton-blue: #0088cc;
+            --ton-light: #24a1de;
+            --bg-dark: #0a111a;
+            --glass: rgba(255, 255, 255, 0.06);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-dim: #8e8e93;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(0, 136, 204, 0.25), transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(0, 136, 204, 0.1), transparent 40%);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 450px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .content {
+            flex: 1;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: 20px 20px 120px;
+            position: relative;
+        }
+
+        /* --- МОДАЛЬНОЕ ОКНО --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
+
+        .modal-card {
+            background: var(--bg-dark);
+            border: 1px solid var(--glass-border);
+            border-radius: 32px;
+            padding: 25px;
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+            transform: scale(0.9);
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .modal-overlay.active .modal-card { transform: scale(1); }
+
+        .modal-img {
+            width: 120px;
+            height: 120px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            object-fit: cover;
+            border: 2px solid var(--ton-blue);
+        }
+
+        .withdraw-btn {
+            width: 100%;
+            background: var(--ton-blue);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 18px;
+            font-weight: 800;
+            font-size: 16px;
+            margin-top: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.3);
+        }
+        .withdraw-btn:active { transform: scale(0.95); }
+
+        /* --- АНИМАЦИИ ПЕРЕХОДА СТРАНИЦ --- */
+        .page {
+            display: none;
+            position: absolute;
+            width: calc(100% - 40px);
+            opacity: 0;
+            transform: translateX(50px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .page.active {
+            display: block;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* --- БАЛАНС СВЕРХУ --- */
+        .game-header {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 30px;
+            height: 40px;
+        }
+
+        .balance-pill {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .balance-pill span {
+            font-weight: 800;
+            color: var(--ton-light);
+        }
+
+        /* --- КАРТОЧКИ --- */
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        /* ПРОФИЛЬ */
+        .avatar {
+            width: 70px; height: 70px; border-radius: 22px;
+            background: linear-gradient(45deg, var(--ton-blue), var(--ton-light));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 30px;
+        }
+
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+        .stat-card { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 20px; border: 1px solid var(--glass-border); }
+        .stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; }
+        .stat-value { font-size: 18px; font-weight: 800; margin-top: 4px; }
+
+        /* Кнопка копирования */
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            color: var(--ton-light);
+            padding: 8px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .copy-btn:active { transform: scale(0.9); background: var(--ton-blue); color: white; }
+
+        /* ИНВЕНТАРЬ ГРИД */
+        .inventory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+        .inventory-item { aspect-ratio: 1/1; border-radius: 12px; background: var(--glass); border: 1px solid var(--glass-border); overflow: hidden; cursor: pointer; }
+        .inventory-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        .wallet-btn { width: 100%; background: #fff; color: #000; border: none; padding: 15px; border-radius: 18px; font-weight: 700; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+        /* НАВИГАЦИЯ */
+        .nav-bar { position: fixed; bottom: 25px; left: 20px; right: 20px; height: 75px; background: rgba(15, 21, 31, 0.9); backdrop-filter: blur(20px); border-radius: 25px; border: 1px solid var(--glass-border); display: flex; justify-content: space-around; align-items: center; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-dim); text-decoration: none; font-size: 10px; font-weight: 600; }
+        .nav-item.active { color: var(--ton-light); }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <main class="content">
+            
+            <!-- СЕКЦИЯ: ИГРА (БЕЗ ТАПАЛКИ) -->
+            <section id="game" class="page active">
+                <div class="game-header">
+                    <div class="balance-pill">
+                        <i data-lucide="database" style="width: 16px; color: var(--ton-light)"></i>
+                        <span id="balance-val">0</span> TON
+                    </div>
+                </div>
+
+                <!-- ИГРОВЫЕ ПАНЕЛИ -->
+                <div class="card" style="display: flex; align-items: center; gap: 15px; cursor: pointer;" onclick="alert('Скоро!')">
+                    <div style="background: rgba(255, 69, 0, 0.2); padding: 12px; border-radius: 15px; color: #ff4500;">
+                        <i data-lucide="flame"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="font-size: 16px; font-weight: 800;">HELL PVP</h3>
+                        <p style="font-size: 12px; color: var(--text-dim);">Адская битва</p>
+                    </div>
+                    <i data-lucide="chevron-right" style="color: var(--text-dim)"></i>
+                </div>
+
+                <div class="card" style="display: flex; align-items: center; gap: 15px; cursor: pointer;" onclick="alert('Скоро!')">
+                    <div style="background: rgba(0, 136, 204, 0.2); padding: 12px; border-radius: 15px; color: var(--ton-light);">
+                        <i data-lucide="swords"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="font-size: 16px; font-weight: 800;">1VS1 PVP</h3>
+                        <p style="font-size: 12px; color: var(--text-dim);">Дуэль на вылет</p>
+                    </div>
+                    <i data-lucide="chevron-right" style="color: var(--text-dim)"></i>
+                </div>
+
+                <div class="card" style="display: flex; align-items: center; gap: 15px; cursor: pointer;" onclick="alert('Скоро!')">
+                    <div style="background: rgba(255, 255, 255, 0.1); padding: 12px; border-radius: 15px; color: #fff;">
+                        <i data-lucide="snowflake"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="font-size: 16px; font-weight: 800;">ICE SOLO</h3>
+                        <p style="font-size: 12px; color: var(--text-dim);">Холодный расчет</p>
+                    </div>
+                    <i data-lucide="chevron-right" style="color: var(--text-dim)"></i>
+                </div>
+            </section>
+
+            <!-- СЕКЦИЯ: ПРОФИЛЬ -->
+            <section id="profile" class="page">
+                <h1 style="margin-bottom: 20px;">Мой кошелек</h1>
+                <div class="card">
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <div class="avatar">👤</div>
+                        <div>
+                            <h2 style="font-size: 20px;">TON Holder</h2>
+                            <p style="color: var(--ton-light); font-weight: 700;">Статус: Active</p>
+                        </div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <p class="stat-label">Реф. Баланс</p>
+                                <p class="stat-value">0 TON</p>
+                            </div>
+                            <button class="copy-btn" onclick="copyRef()">
+                                <i data-lucide="copy" style="width: 16px; height: 16px;"></i>
+                            </button>
+                        </div>
+                        <div class="stat-card"><p class="stat-label">Стейкинг</p><p class="stat-value">0 TON</p></div>
+                    </div>
+                    <button class="wallet-btn" onclick="connectWallet()"><i data-lucide="wallet"></i> Подключить кошелек</button>
+                </div>
+
+                <div class="card">
+                    <h2 style="font-size: 18px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="package" style="width: 20px; color: var(--ton-light)"></i> Инвентарь
+                    </h2>
+                    <div id="inventory-list" class="inventory-grid">
+                        <p id="empty-msg" style="color: var(--text-dim); font-size: 14px; grid-column: 1/-1; text-align: center; padding: 10px;">Пока пусто...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- СЕКЦИЯ: МАГАЗИН -->
+            <section id="shop" class="page">
+                <h1 style="margin-bottom: 20px;">Улучшения</h1>
+                <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <img src="https://avatars.mds.yandex.net/i?id=77c989045a31148da8831b75a6e5e2d23e5af693-4258580-images-thumbs&n=13" style="width: 48px; height: 48px; border-radius: 12px;">
+                        <div><p style="font-weight: 700;">Desk Calendar</p><p style="font-size: 12px; color: var(--text-dim);">random desk calendar</p></div>
+                    </div>
+                    <button onclick="buyItem('desk')" style="background: var(--ton-blue); border: none; padding: 10px 15px; border-radius: 12px; color: #fff; font-weight: 700;">2.2 TON</button>
+                </div>
+                <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <img src="https://avatars.mds.yandex.net/i?id=0385e3343803682dfca2aec041e4b471e963afff-5887122-images-thumbs&n=13" style="width: 48px; height: 48px; border-radius: 12px;">
+                        <div><p style="font-weight: 700;">LolPop</p><p style="font-size: 12px; color: var(--text-dim);">random lolpop</p></div>
+                    </div>
+                    <button onclick="buyItem('lolpop')" style="background: var(--ton-blue); border: none; padding: 10px 15px; border-radius: 12px; color: #fff; font-weight: 700;">2.3 TON</button>
+                </div>
+            </section>
+        </main>
+
+        <nav class="nav-bar">
+            <a href="#" class="nav-item active" onclick="switchTab(event, 'game')"><i data-lucide="play"></i><span>ИГРА</span></a>
+            <a href="#" class="nav-item" onclick="switchTab(event, 'profile')"><i data-lucide="user"></i><span>ПРОФИЛЬ</span></a>
+            <a href="#" class="nav-item" onclick="switchTab(event, 'shop')"><i data-lucide="shopping-cart"></i><span>МАГАЗИН</span></a>
+        </nav>
+    </div>
+
+    <!-- ОКНО ВЫВОДА -->
+    <div id="withdraw-modal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <img id="modal-img" class="modal-img" src="">
+            <h2 style="font-size: 22px; margin-bottom: 10px;">Предмет выбран</h2>
+            <p style="color: var(--text-dim); font-size: 14px;">Вы можете вывести этот предмет на свой TON кошелек</p>
+            <button class="withdraw-btn" onclick="alert('Запрос на вывод отправлен!')">Вывести</button>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        let balance = 0;
+        let inventory = [];
+
+        const deskImages = ["https://avatars.mds.yandex.net/i?id=11d7829a1ea8169feb71cfc7c9b51ab1537d5a11-4809781-images-thumbs&n=13","https://avatars.mds.yandex.net/i?id=c1c544bb159cab9e0abb3328bf1f0e09de005747-4549815-images-thumbs&n=13","https://avatars.mds.yandex.net/i?id=cc8bfc380b1879663bab246678d435d70d6e3ff5-5379000-images-thumbs&n=13","https://avatars.mds.yandex.net/i?id=0510324ca335322d2ca9711432f9a40d6de3fd92-5228619-images-thumbs&n=13","https://avatars.mds.yandex.net/i?id=a5955d51dfd9222512fc84aff2d4f3a4f2a45466-4253534-images-thumbs&n=13"];
+        const lolpopImages = ["https://avatars.mds.yandex.net/i?id=aa24320cd9ab828586f5b7f468d0174dc5006aea-4981909-images-thumbs&n=13","https://avatars.mds.yandex.net/i?id=0c7ee6aab3038a0be3064868f97e2314037a1dfa-5888237-images-thumbs&n=13","https://avatars.mds.yandex.net/i?id=0385e3343803682dfca2aec041e4b471e963afff-5887122-images-thumbs&n=13","https://avatars.mds.yandex.net/i?id=5671b9736bbff1782b7988cfc95bae1ebec01b35-12613260-images-thumbs&n=13"];
+
+        function updateBalanceUI() { document.getElementById('balance-val').innerText = balance.toFixed(1); }
+
+        function copyRef() {
+            const dummyLink = "https://t.me/ton_clicker_bot?start=123456";
+            navigator.clipboard.writeText(dummyLink).then(() => {
+                alert("Реферальная ссылка скопирована!");
+                if (window.navigator.vibrate) window.navigator.vibrate(50);
+            });
+        }
+
+        function buyItem(type) {
+            const price = type === 'desk' ? 2.2 : 2.3;
+            if (balance >= price) {
+                balance -= price; updateBalanceUI();
+                const source = type === 'desk' ? deskImages : lolpopImages;
+                inventory.push(source[Math.floor(Math.random() * source.length)]);
+                renderInventory();
+                alert("Куплено!");
+            } else alert("Мало TON!");
+        }
+
+        function renderInventory() {
+            const list = document.getElementById('inventory-list');
+            const msg = document.getElementById('empty-msg');
+            if (inventory.length > 0 && msg) msg.remove();
+            list.innerHTML = '';
+            inventory.forEach(url => {
+                const item = document.createElement('div');
+                item.className = 'inventory-item';
+                item.innerHTML = `<img src="${url}">`;
+                item.onclick = () => openModal(url);
+                list.appendChild(item);
+            });
+        }
+
+        function openModal(url) {
+            document.getElementById('modal-img').src = url;
+            document.getElementById('withdraw-modal').classList.add('active');
+            if (window.navigator.vibrate) window.navigator.vibrate(30);
+        }
+
+        function closeModal(e) {
+            document.getElementById('withdraw-modal').classList.remove('active');
+        }
+
+        function switchTab(event, tabId) {
+            event.preventDefault();
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            document.querySelectorAll('.page').forEach(p => {
+                p.classList.remove('active');
+                if(p.id === tabId) p.classList.add('active');
+            });
+        }
+
+        function connectWallet() { alert("Кошелек подключается..."); }
+    </script>
+</body>
+</html>
