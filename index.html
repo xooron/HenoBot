@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TON Clicker Legacy</title>
+    <title>TON Clicker Legacy - Roulette</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <!-- Иконки Lucide -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* (Твои стили остаются без изменений, добавляю только фикс для активных вкладок) */
         :root {
             --ton-blue: #0088cc;
             --ton-light: #24a1de;
@@ -19,27 +17,50 @@
             --glass-border: rgba(255, 255, 255, 0.1);
             --text-main: #ffffff;
             --text-dim: #8e8e93;
+            --candy-pink: #ff7eb9;
+            --candy-yellow: #fff385;
+            --candy-blue: #7afcff;
         }
+
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Inter', sans-serif; }
         body { background-color: var(--bg-dark); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; justify-content: center; }
         #app { width: 100%; max-width: 450px; height: 100%; display: flex; flex-direction: column; position: relative; }
         .content { flex: 1; overflow-y: auto; padding: 20px 20px 120px; }
         .page { display: none; }
         .page.active { display: block; animation: fadeIn 0.3s ease forwards; }
+
+        /* Roulette Styles */
+        .roulette-container { position: relative; width: 300px; height: 300px; margin: 20px auto; filter: drop-shadow(0 0 20px rgba(36, 161, 222, 0.3)); }
+        #roulette-canvas { width: 100%; height: 100%; border-radius: 50%; border: 8px solid #fff; box-shadow: 0 0 0 4px var(--candy-pink); transition: transform 8s cubic-bezier(0.15, 0, 0.15, 1); }
+        .pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 30px; height: 40px; background: #fff; clip-path: polygon(50% 100%, 0 0, 100% 0); z-index: 10; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); }
         
+        .game-info { text-align: center; margin-bottom: 20px; }
+        .timer-badge { background: var(--candy-pink); color: #000; padding: 5px 15px; border-radius: 20px; font-weight: 800; font-size: 1.2rem; display: inline-block; margin-bottom: 10px; }
+        .bank-badge { background: var(--glass); border: 1px solid var(--glass-border); padding: 8px 20px; border-radius: 15px; display: inline-block; }
+
+        .bet-controls { display: flex; gap: 10px; margin-bottom: 20px; }
+        .bet-input { flex: 1; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff; padding: 12px; font-size: 1rem; outline: none; }
+        .bet-btn { background: var(--ton-light); color: #fff; border: none; border-radius: 12px; padding: 0 20px; font-weight: bold; cursor: pointer; }
+
+        .players-list { background: var(--glass); border-radius: 20px; padding: 15px; }
+        .player-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--glass-border); }
+        .player-item:last-child { border-bottom: none; }
+        .player-avatar { width: 35px; height: 35px; border-radius: 50%; border: 2px solid var(--ton-light); }
+        .player-name { flex: 1; font-weight: 600; font-size: 0.9rem; }
+        .player-percent { color: var(--ton-light); font-weight: 800; }
+
+        /* Winner Modal */
+        #winner-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-content { background: linear-gradient(135deg, #1a1a1a, #0a0a0a); border: 2px solid var(--candy-pink); padding: 30px; border-radius: 30px; text-align: center; width: 80%; max-width: 320px; transform: scale(0.8); animation: modalIn 0.5s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes modalIn { to { transform: scale(1); } }
+
+        /* UI Helpers */
         .card { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 24px; padding: 20px; margin-bottom: 16px; }
-        
-        /* Навигация */
         .nav-bar { position: fixed; bottom: 25px; left: 20px; right: 20px; height: 75px; background: rgba(15, 21, 31, 0.9); backdrop-filter: blur(20px); border-radius: 25px; border: 1px solid var(--glass-border); display: flex; justify-content: space-around; align-items: center; z-index: 1000; }
         .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-dim); text-decoration: none; font-size: 10px; font-weight: 600; transition: 0.3s; }
         .nav-item i { margin-bottom: 4px; width: 24px; height: 24px; }
         .nav-item.active { color: var(--ton-light); }
-
         .balance-pill { background: var(--glass); padding: 8px 16px; border-radius: 20px; display: flex; align-items: center; gap: 8px; font-weight: 800; }
-        
-        .inventory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-        .inventory-item { aspect-ratio: 1/1; border-radius: 12px; background: var(--glass); border: 1px solid var(--glass-border); overflow: hidden; }
-        .inventory-item img { width: 100%; height: 100%; object-fit: cover; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -48,42 +69,42 @@
 
     <div id="app">
         <main class="content">
-            <!-- GAME -->
+            <!-- PAGE: GAME (ROULETTE) -->
             <section id="game" class="page active">
-                <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
                     <div class="balance-pill">
                         <i data-lucide="database"></i> <span id="balance-val">0</span> TON
                     </div>
                 </div>
-                <div class="card" onclick="tg.showAlert('Режим в разработке!')">
-                    <h3 style="display:flex; align-items:center; gap:10px;"><i data-lucide="flame" color="#ff4500"></i> HELL PVP</h3>
+
+                <div class="game-info">
+                    <div id="game-status-text" style="color: var(--text-dim); margin-bottom: 5px;">ОЖИДАНИЕ ИГРОКОВ...</div>
+                    <div id="timer-display" class="timer-badge" style="display:none;">15</div>
+                    <br>
+                    <div class="bank-badge">БАНК: <span id="total-bank" style="color: var(--ton-light);">0.00</span> TON</div>
                 </div>
-                <div class="card" onclick="tg.showAlert('Режим в разработке!')">
-                    <h3 style="display:flex; align-items:center; gap:10px;"><i data-lucide="swords" color="#24a1de"></i> 1VS1 DUEL</h3>
+
+                <div class="roulette-container">
+                    <div class="pointer"></div>
+                    <canvas id="roulette-canvas" width="600" height="600"></canvas>
+                </div>
+
+                <div class="bet-controls">
+                    <input type="number" id="bet-amount" class="bet-input" placeholder="Сумма ставки..." step="0.1">
+                    <button class="bet-btn" onclick="placeBet()">СТАВКА</button>
+                </div>
+
+                <div class="players-list" id="players-list">
+                    <!-- Список игроков будет тут -->
                 </div>
             </section>
 
-            <!-- PROFILE -->
+            <!-- PAGE: PROFILE -->
             <section id="profile" class="page">
                 <div class="card">
                     <h2 id="user-name">Загрузка...</h2>
                     <p id="wallet-status" style="color: var(--ton-light);">Кошелек не подключен</p>
-                    <button class="card" style="width:100%; margin-top:15px; background: white; color: black; font-weight: bold;" id="ton-connect-btn">
-                        Подключить TON
-                    </button>
-                </div>
-                <div class="card">
-                    <h3><i data-lucide="package"></i> Инвентарь</h3>
-                    <div id="inventory-list" class="inventory-grid" style="margin-top:15px;"></div>
-                </div>
-            </section>
-
-            <!-- SHOP -->
-            <section id="shop" class="page">
-                <h1>Магазин</h1>
-                <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-                    <div><b>Desk Calendar</b><br><small>2.2 TON</small></div>
-                    <button onclick="buyItem('desk', 2.2)" style="background:var(--ton-blue); color:white; border:none; padding:10px; border-radius:10px;">Купить</button>
+                    <div id="ton-connect-btn" style="margin-top: 15px;"></div>
                 </div>
             </section>
         </main>
@@ -95,42 +116,46 @@
             <a href="#" class="nav-item" onclick="switchTab(event, 'profile')">
                 <i data-lucide="user"></i><span>ПРОФИЛЬ</span>
             </a>
-            <a href="#" class="nav-item" onclick="switchTab(event, 'shop')">
-                <i data-lucide="shopping-cart"></i><span>МАГАЗИН</span>
-            </a>
         </nav>
+    </div>
+
+    <!-- Winner Modal -->
+    <div id="winner-modal">
+        <div class="modal-content">
+            <h2 style="color: var(--candy-yellow); margin-bottom: 10px;">ПОБЕДИТЕЛЬ!</h2>
+            <img id="winner-avatar" src="" style="width: 80px; height: 80px; border-radius: 50%; border: 4px solid var(--candy-pink); margin-bottom: 15px;">
+            <div id="winner-name" style="font-weight: 800; font-size: 1.2rem; margin-bottom: 5px;">@user</div>
+            <div style="font-size: 0.9rem; color: var(--text-dim);">ВЫИГРЫШ</div>
+            <div id="winner-prize" style="font-size: 1.5rem; font-weight: 800; color: #4cd964;">0.00 TON</div>
+            <button onclick="closeWinnerModal()" style="margin-top: 20px; background: var(--ton-light); color: #fff; border: none; padding: 10px 30px; border-radius: 12px; font-weight: bold;">УРА!</button>
+        </div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        const API_URL = 'http://localhost:3000/api'; // ЗАМЕНИ НА СВОЙ URL ПОСЛЕ ДЕПЛОЯ
+        const API_URL = 'http://localhost:3000/api';
         
         let currentUser = null;
-        tg.expand();
+        let gameState = { players: [], totalBank: 0, timer: 0, status: 'waiting' };
+        const canvas = document.getElementById('roulette-canvas');
+        const ctx = canvas.getContext('2d');
 
         // Инициализация иконок
         lucide.createIcons();
+        tg.expand();
 
-        // Функция переключения вкладок
         function switchTab(event, tabId) {
             event.preventDefault();
-            
-            // Убираем активный класс у кнопок
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            // Добавляем активный класс нажатой кнопке
             event.currentTarget.classList.add('active');
-
-            // Скрываем все страницы и показываем нужную
             document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-
             tg.HapticFeedback.selectionChanged();
         }
 
-        // Авторизация на сервере
         async function initApp() {
-            const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Test", username: "tester" };
-            
+            // Имитация пользователя Telegram
+            const user = tg.initDataUnsafe.user || { id: 12345, first_name: "Gamer", username: "player1", photo_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=1" };
             try {
                 const response = await fetch(`${API_URL}/auth`, {
                     method: 'POST',
@@ -139,9 +164,9 @@
                 });
                 currentUser = await response.json();
                 updateUI();
+                pollGameState(); // Начинаем опрос состояния игры
             } catch (e) {
                 console.error("Ошибка сервера:", e);
-                tg.showAlert("Сервер недоступен");
             }
         }
 
@@ -149,45 +174,165 @@
             if (!currentUser) return;
             document.getElementById('balance-val').innerText = currentUser.balance.toFixed(2);
             document.getElementById('user-name').innerText = currentUser.name;
+        }
+
+        // --- ЛОГИКА РУЛЕТКИ ---
+
+        function drawWheel(players) {
+            const total = players.reduce((sum, p) => sum + p.bet, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            const invList = document.getElementById('inventory-list');
-            invList.innerHTML = '';
-            currentUser.inventory.forEach(imgUrl => {
-                const div = document.createElement('div');
-                div.className = 'inventory-item';
-                div.innerHTML = `<img src="${imgUrl}">`;
-                invList.appendChild(div);
+            if (players.length === 0) {
+                ctx.beginPath();
+                ctx.fillStyle = "#222";
+                ctx.arc(300, 300, 290, 0, Math.PI * 2);
+                ctx.fill();
+                return;
+            }
+
+            let startAngle = 0;
+            players.forEach((player, index) => {
+                const sliceAngle = (player.bet / total) * Math.PI * 2;
+                
+                // Сектор (карамельные цвета)
+                ctx.beginPath();
+                ctx.moveTo(300, 300);
+                ctx.arc(300, 300, 290, startAngle, startAngle + sliceAngle);
+                const colors = ['#ff7eb9', '#7afcff', '#fff385', '#9dff85', '#ff9d85'];
+                ctx.fillStyle = colors[index % colors.length];
+                ctx.fill();
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                // Отрисовка аватарки в секторе
+                ctx.save();
+                const middleAngle = startAngle + sliceAngle / 2;
+                const avatarRadius = 180;
+                const x = 300 + Math.cos(middleAngle) * avatarRadius;
+                const y = 300 + Math.sin(middleAngle) * avatarRadius;
+
+                ctx.beginPath();
+                ctx.arc(x, y, 35, 0, Math.PI * 2);
+                ctx.clip();
+                
+                const img = new Image();
+                img.src = player.photo_url || 'https://via.placeholder.com/100';
+                ctx.drawImage(img, x - 35, y - 35, 70, 70);
+                ctx.restore();
+
+                startAngle += sliceAngle;
             });
         }
 
-        async function buyItem(type, price) {
-            const img = type === 'desk' 
-                ? "https://avatars.mds.yandex.net/i?id=11d7829a1ea8169feb71cfc7c9b51ab1537d5a11-4809781-images-thumbs&n=13" 
-                : "https://avatars.mds.yandex.net/i?id=0c7ee6aab3038a0be3064868f97e2314037a1dfa-5888237-images-thumbs&n=13";
+        async function placeBet() {
+            const amount = parseFloat(document.getElementById('bet-amount').value);
+            if (isNaN(amount) || amount <= 0) return tg.showAlert("Введите сумму!");
+            if (amount > currentUser.balance) return tg.showAlert("Недостаточно TON!");
 
             try {
-                const response = await fetch(`${API_URL}/buy`, {
+                const response = await fetch(`${API_URL}/bet`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: currentUser.id, itemType: type, price, imageUrl: img })
+                    body: JSON.stringify({ userId: currentUser.id, amount })
                 });
-                const result = await response.json();
-                
-                if (result.success) {
-                    currentUser.balance = result.balance;
-                    currentUser.inventory = result.inventory;
+                const data = await response.json();
+                if (data.success) {
+                    currentUser.balance = data.newBalance;
                     updateUI();
-                    tg.showAlert("Успешная покупка!");
                     tg.HapticFeedback.notificationOccurred('success');
                 } else {
-                    tg.showAlert(result.error);
+                    tg.showAlert(data.error);
                 }
             } catch (e) {
-                tg.showAlert("Ошибка при покупке");
+                tg.showAlert("Ошибка ставки");
             }
         }
 
-        // TON Connect
+        async function pollGameState() {
+            setInterval(async () => {
+                try {
+                    const res = await fetch(`${API_URL}/game-status`);
+                    const newState = await res.json();
+                    
+                    // Если началось вращение
+                    if (newState.status === 'spinning' && gameState.status !== 'spinning') {
+                        startSpin(newState.winningAngle, newState.winner);
+                    }
+
+                    gameState = newState;
+                    updateGameUI();
+                } catch (e) {}
+            }, 1000);
+        }
+
+        function updateGameUI() {
+            document.getElementById('total-bank').innerText = gameState.totalBank.toFixed(2);
+            const statusText = document.getElementById('game-status-text');
+            const timerDisplay = document.getElementById('timer-display');
+
+            if (gameState.status === 'waiting') {
+                statusText.innerText = "ОЖИДАНИЕ ИГРОКОВ (минимум 2)...";
+                timerDisplay.style.display = 'none';
+            } else if (gameState.status === 'countdown') {
+                statusText.innerText = "ДО НАЧАЛА:";
+                timerDisplay.style.display = 'inline-block';
+                timerDisplay.innerText = gameState.timer;
+            } else if (gameState.status === 'spinning') {
+                statusText.innerText = "УДАЧА РЕШАЕТ...";
+                timerDisplay.style.display = 'none';
+            }
+
+            // Список игроков
+            const listEl = document.getElementById('players-list');
+            listEl.innerHTML = gameState.players.map(p => {
+                const percent = ((p.bet / gameState.totalBank) * 100).toFixed(1);
+                return `
+                    <div class="player-item">
+                        <img class="player-avatar" src="${p.photo_url}">
+                        <span class="player-name">${p.name}</span>
+                        <span style="margin-right:10px;">${p.bet} TON</span>
+                        <span class="player-percent">${percent}%</span>
+                    </div>
+                `;
+            }).join('');
+
+            if (gameState.status !== 'spinning') {
+                drawWheel(gameState.players);
+            }
+        }
+
+        function startSpin(winningAngle, winner) {
+            const canvasEl = document.getElementById('roulette-canvas');
+            // 8 секунд вращения + дополнительные круги (5-10)
+            const extraSpins = 5 + Math.random() * 5;
+            const totalRotation = (extraSpins * 360) + winningAngle;
+            
+            canvasEl.style.transform = `rotate(${totalRotation}deg)`;
+
+            setTimeout(() => {
+                showWinner(winner);
+                // Сброс позиции для следующей игры (без анимации)
+                setTimeout(() => {
+                    canvasEl.style.transition = 'none';
+                    canvasEl.style.transform = 'rotate(0deg)';
+                    setTimeout(() => { canvasEl.style.transition = 'transform 8s cubic-bezier(0.15, 0, 0.15, 1)'; }, 100);
+                }, 2000);
+            }, 8500);
+        }
+
+        function showWinner(winner) {
+            document.getElementById('winner-avatar').src = winner.photo_url;
+            document.getElementById('winner-name').innerText = winner.name;
+            document.getElementById('winner-prize').innerText = gameState.totalBank.toFixed(2) + " TON";
+            document.getElementById('winner-modal').style.display = 'flex';
+            tg.HapticFeedback.notificationOccurred('success');
+        }
+
+        function closeWinnerModal() {
+            document.getElementById('winner-modal').style.display = 'none';
+        }
+
         const tonConnectUI = new TONConnectUI.TonConnectUI({
             manifestUrl: 'https://raw.githubusercontent.com/ton-community/tutorials/main/03-client/reusing-manifest/manifest.json',
             buttonRootId: 'ton-connect-btn'
