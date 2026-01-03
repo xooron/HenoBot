@@ -1,59 +1,56 @@
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-
 const app = express();
-app.use(cors());
-app.use(bodyParser.json());
 
-// База данных в оперативной памяти
+app.use(cors());
+app.use(express.json());
+
 let users = {};
-let game = {
+let gameState = {
+    status: 'waiting', // waiting, countdown, spinning, result
     players: [],
     totalBank: 0,
-    status: 'waiting', // 'waiting', 'countdown', 'spinning', 'result'
     timer: 15,
     winner: null,
     winningAngle: 0,
-    lastUpdate: Date.now()
+    startTime: null
 };
 
-// Авторизация и выдача 10 TON
+// Авторизация
 app.post('/api/auth', (req, res) => {
     const { id, first_name, username, photo_url } = req.body;
-    
     if (!users[id]) {
         users[id] = {
             id,
-            first_name: first_name || "Игрок",
+            name: first_name || "Игрок",
             username: username || "user",
-            balance: 10.0, // Выдаем 10 TON при первом входе
-            photo_url: photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`
+            photo_url: photo_url || `https://ui-avatars.com/api/?name=${first_name}&background=random`,
+            balance: 10.0 // Тот самый бонус 10 TON
         };
     }
     res.json(users[id]);
 });
 
-app.get('/api/game-status', (req, res) => {
-    res.json(game);
-});
+// Статус игры
+app.get('/api/status', (req, res) => res.json(gameState));
 
+// Ставка
 app.post('/api/bet', (req, res) => {
     const { userId, amount } = req.body;
     const user = users[userId];
 
-    if (!user || user.balance < amount) return res.status(400).json({ error: "Недостаточно TON" });
-    if (game.status === 'spinning' || game.status === 'result') return res.status(400).json({ error: "Игра уже идет" });
+    if (!user || user.balance < amount || amount <= 0) return res.status(400).json({ error: "Ошибка ставки" });
+    if (gameState.status === 'spinning' || gameState.status === 'result') return res.status(400).json({ error: "Игра идет" });
 
     user.balance -= amount;
+    const pIdx = gameState.players.findIndex(p => p.id === userId);
     
-    const existingPlayer = game.players.find(p => p.id === userId);
-    if (existingPlayer) {
-        existingPlayer.bet += amount;
+    if (pIdx > -1) {
+        gameState.players[pIdx].bet += amount;
     } else {
-        game.players.push({
+        gameState.players.push({
             id: user.id,
-            name: user.first_name,
+            name: user.name,
             username: user.username,
             photo_url: user.photo_url,
             bet: amount,
@@ -61,66 +58,57 @@ app.post('/api/bet', (req, res) => {
         });
     }
 
-    game.totalBank += amount;
+    gameState.totalBank += amount;
 
-    if (game.players.length >= 2 && game.status === 'waiting') {
-        game.status = 'countdown';
-        game.timer = 15;
+    if (gameState.players.length >= 2 && gameState.status === 'waiting') {
+        startCountdown();
     }
-
-    res.json({ success: true, newBalance: user.balance });
+    res.json({ success: true, balance: user.balance });
 });
 
-// Глобальный цикл игры (серверный таймер)
-setInterval(() => {
-    if (game.status === 'countdown') {
-        game.timer--;
-        if (game.timer <= 0) {
+function startCountdown() {
+    gameState.status = 'countdown';
+    gameState.timer = 15;
+    const interval = setInterval(() => {
+        gameState.timer--;
+        if (gameState.timer <= 0) {
+            clearInterval(interval);
             startSpin();
         }
-    }
-}, 1000);
+    }, 1000);
+}
 
 function startSpin() {
-    game.status = 'spinning';
-    
-    // Выбор победителя
-    const random = Math.random() * game.totalBank;
-    let cumulative = 0;
-    let winner = game.players[0];
+    gameState.status = 'spinning';
+    const random = Math.random() * gameState.totalBank;
+    let current = 0;
+    let winner = gameState.players[0];
 
-    for (const p of game.players) {
-        cumulative += p.bet;
-        if (random <= cumulative) {
-            winner = p;
-            break;
-        }
+    for (const p of gameState.players) {
+        current += p.bet;
+        if (random <= current) { winner = p; break; }
     }
 
-    // Расчет угла остановки
-    let currentAngle = 0;
-    game.players.forEach(p => {
-        const slice = (p.bet / game.totalBank) * 360;
+    // Считаем угол
+    let angleAcc = 0;
+    gameState.players.forEach(p => {
+        const slice = (p.bet / gameState.totalBank) * 360;
         if (p.id === winner.id) {
-            game.winningAngle = 360 - (currentAngle + (slice / 2));
+            gameState.winningAngle = 360 - (angleAcc + slice / 2);
         }
-        currentAngle += slice;
+        angleAcc += slice;
     });
 
-    game.winner = winner;
-    if (users[winner.id]) users[winner.id].balance += game.totalBank * 0.95;
+    gameState.winner = winner;
+    if (users[winner.id]) users[winner.id].balance += gameState.totalBank * 0.95;
 
-    // Время на вращение (8 сек) + показ результата (4 сек)
     setTimeout(() => {
-        game.status = 'result';
+        gameState.status = 'result';
         setTimeout(() => {
-            resetGame();
-        }, 4000);
+            gameState = { status: 'waiting', players: [], totalBank: 0, timer: 15, winner: null, winningAngle: 0 };
+        }, 5000);
     }, 8500);
 }
 
-function resetGame() {
-    game = { players: [], totalBank: 0, status: 'waiting', timer: 15, winner: null, winningAngle: 0 };
-}
-
-app.listen(3000, () => console.log('Backend запущен на порту 3000'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
