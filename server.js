@@ -1,9 +1,17 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// ЭТО ИСПРАВЛЯЕТ ОШИБКУ "Cannot GET /"
+// Сервер будет отдавать ваш файл index.html автоматически
+app.use(express.static(__dirname));
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 let users = {};
 let game = {
@@ -24,33 +32,30 @@ app.post('/api/auth', (req, res) => {
             name: first_name || "Gamer",
             username: username || "user",
             photo_url: photo_url || `https://ui-avatars.com/api/?name=${first_name || 'U'}&background=random`,
-            balance: 10.0 // Бонус при входе
+            balance: 10.0 // Бонус 10 TON
         };
     }
     res.json(users[id]);
 });
 
-// Эндпоинт для добавления бота
-app.post('/api/add-bot-bet', (req, res) => {
-    if (game.status === 'spinning' || game.status === 'result') {
-        return res.status(400).json({ error: "Игра уже идет" });
-    }
-    const botId = Math.floor(Math.random() * 100000);
-    const botBet = parseFloat((Math.random() * 2 + 1).toFixed(1)); // Ставка от 1 до 3 TON
+// Добавление тестового бота
+app.post('/api/add-bot', (req, res) => {
+    if (game.status === 'spinning' || game.status === 'result') return res.status(400).send();
+    const botId = Math.floor(Math.random() * 9000) + 1000;
+    const botBet = parseFloat((Math.random() * 2 + 0.5).toFixed(1));
     
     game.players.push({
         id: botId,
-        name: "Bot_" + botId,
-        username: "bot_tester",
+        name: "Test Bot " + botId,
+        username: "bot_" + botId,
         photo_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${botId}`,
         bet: botBet,
-        color: `hsl(${Math.random() * 360}, 75%, 60%)`
+        color: `hsl(${Math.random() * 360}, 80%, 60%)`
     });
     
     game.totalBank += botBet;
     if (game.players.length >= 2 && game.status === 'waiting') {
-        game.status = 'countdown';
-        game.timer = 15;
+        game.status = 'countdown'; game.timer = 15;
     }
     res.json({ success: true });
 });
@@ -60,7 +65,7 @@ app.get('/api/status', (req, res) => res.json(game));
 app.post('/api/bet', (req, res) => {
     const { userId, amount } = req.body;
     const user = users[userId];
-    if (!user || user.balance < amount || amount <= 0) return res.status(400).json({ error: "Мало TON" });
+    if (!user || user.balance < amount) return res.status(400).json({ error: "Мало TON" });
     if (game.status === 'spinning' || game.status === 'result') return res.status(400).json({ error: "Игра идет" });
 
     user.balance -= amount;
@@ -69,13 +74,12 @@ app.post('/api/bet', (req, res) => {
     else game.players.push({
         id: user.id, name: user.name, username: user.username,
         photo_url: user.photo_url, bet: amount,
-        color: `hsl(${Math.random() * 360}, 75%, 60%)`
+        color: `hsl(${Math.random() * 360}, 80%, 60%)`
     });
 
     game.totalBank += amount;
     if (game.players.length >= 2 && game.status === 'waiting') {
-        game.status = 'countdown';
-        game.timer = 15;
+        game.status = 'countdown'; game.timer = 15;
     }
     res.json({ success: true, balance: user.balance });
 });
@@ -109,4 +113,5 @@ setInterval(() => {
     }
 }, 1000);
 
-app.listen(3000, () => console.log('Backend OK port 3000'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Сервер запущен на порту ${PORT}`));
