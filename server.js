@@ -7,25 +7,23 @@ app.use(express.json());
 
 let users = {};
 let game = {
-    status: 'waiting', // waiting, countdown, spinning, result
+    status: 'waiting', 
     players: [],
     totalBank: 0,
     timer: 15,
     winner: null,
-    winningAngle: 0,
-    startTime: null
+    winningAngle: 0
 };
 
-// Авторизация: выдаем 10 TON новым игрокам
 app.post('/api/auth', (req, res) => {
     const { id, first_name, username, photo_url } = req.body;
     if (!users[id]) {
         users[id] = {
             id,
-            name: first_name || "Игрок",
+            name: first_name || "Gamer",
             username: username || "user",
-            photo_url: photo_url || `https://ui-avatars.com/api/?name=${first_name}&background=random`,
-            balance: 10.0 // Начальный баланс 10 TON
+            photo_url: photo_url || `https://ui-avatars.com/api/?name=${first_name}`,
+            balance: 10.0 // Выдача 10 TON при первом входе
         };
     }
     res.json(users[id]);
@@ -38,7 +36,7 @@ app.post('/api/bet', (req, res) => {
     const user = users[userId];
 
     if (!user || user.balance < amount || amount <= 0) return res.status(400).json({ error: "Ошибка" });
-    if (game.status !== 'waiting' && game.status !== 'countdown') return res.status(400).json({ error: "Ставки закрыты" });
+    if (game.status === 'spinning' || game.status === 'result') return res.status(400).json({ error: "Игра идет" });
 
     user.balance -= amount;
     const pIdx = game.players.findIndex(p => p.id === userId);
@@ -49,32 +47,27 @@ app.post('/api/bet', (req, res) => {
         game.players.push({
             id: user.id,
             name: user.name,
+            username: user.username,
             photo_url: user.photo_url,
             bet: amount,
-            color: `hsl(${Math.random() * 360}, 70%, 50%)`
+            color: `hsl(${Math.random() * 360}, 70%, 60%)`
         });
     }
-
     game.totalBank += amount;
 
-    // Если 2 игрока и более — запускаем отчет
     if (game.players.length >= 2 && game.status === 'waiting') {
-        startCountdown();
+        game.status = 'countdown';
+        game.timer = 15;
     }
     res.json({ success: true, balance: user.balance });
 });
 
-function startCountdown() {
-    game.status = 'countdown';
-    game.timer = 15;
-    const interval = setInterval(() => {
+setInterval(() => {
+    if (game.status === 'countdown') {
         game.timer--;
-        if (game.timer <= 0) {
-            clearInterval(interval);
-            startSpin();
-        }
-    }, 1000);
-}
+        if (game.timer <= 0) startSpin();
+    }
+}, 1000);
 
 function startSpin() {
     game.status = 'spinning';
@@ -87,27 +80,24 @@ function startSpin() {
         if (random <= current) { winner = p; break; }
     }
 
-    // Расчет угла: 3600 (10 кругов) + угол сектора
     let angleAcc = 0;
     game.players.forEach(p => {
         const slice = (p.bet / game.totalBank) * 360;
         if (p.id === winner.id) {
-            // Выбираем центр сектора победителя
             game.winningAngle = 360 - (angleAcc + slice / 2);
         }
         angleAcc += slice;
     });
 
     game.winner = winner;
-    if (users[winner.id]) users[winner.id].balance += game.totalBank * 0.95; // 5% комиссия
+    if (users[winner.id]) users[winner.id].balance += game.totalBank * 0.95;
 
     setTimeout(() => {
         game.status = 'result';
         setTimeout(() => {
-            // Сброс игры
             game = { status: 'waiting', players: [], totalBank: 0, timer: 15, winner: null, winningAngle: 0 };
-        }, 5000); // 5 сек показываем окно победителя
-    }, 8500); // 8 сек крутится рулетка
+        }, 5000);
+    }, 8500);
 }
 
 const PORT = process.env.PORT || 3000;
