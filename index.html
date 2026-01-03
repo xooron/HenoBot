@@ -3,65 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Candy Roulette</title>
+    <title>Candy Roulette</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        :root { --ton: #0088cc; --neon-green: #00ff88; }
+        :root { --ton: #0088cc; --neon: #00ff88; }
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
-        
-        body { background: #050505; color: white; height: 100vh; overflow: hidden; }
+        body { background: #000; color: white; height: 100vh; overflow: hidden; }
 
         #app { display: flex; flex-direction: column; height: 100%; max-width: 450px; margin: 0 auto; }
         .content { flex: 1; overflow-y: auto; padding: 20px; text-align: center; }
-        .page { display: none; }
+        .page { display: none; animation: fadeIn 0.3s ease; }
         .active { display: block; }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 
-        /* Lollipop Design */
-        .lollipop-box { position: relative; width: 280px; height: 360px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
-        
-        /* Палочка теперь за леденцом */
-        .lollipop-stick { 
-            position: absolute; top: 130px; width: 14px; height: 160px; 
-            background: linear-gradient(to bottom, #333, #111);
-            border-radius: 10px; z-index: 1; 
-        }
-
+        /* Lollipop */
+        .lollipop-box { position: relative; width: 280px; height: 350px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
+        .stick { position: absolute; top: 130px; width: 14px; height: 150px; background: linear-gradient(#333, #111); border-radius: 10px; z-index: 1; }
         .wheel-outer { 
-            position: relative; width: 240px; height: 240px; 
-            border-radius: 50%; border: 6px solid #1a1a1a; 
-            box-shadow: 0 0 40px rgba(0, 136, 204, 0.2);
-            z-index: 2; overflow: hidden;
+            position: relative; width: 240px; height: 240px; border-radius: 50%; 
+            border: 6px solid #1a1a1a; box-shadow: 0 0 30px rgba(0, 136, 204, 0.3); z-index: 2; 
         }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; transition: transform 8s cubic-bezier(0.15, 0, 0.15, 1); }
+        .pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid white; z-index: 10; }
         
-        #wheel-canvas { width: 100%; height: 100%; border-radius: 50%; transition: transform 8s cubic-bezier(0.15, 0, 0.15, 1); }
-        
-        .pointer { 
-            position: absolute; top: -10px; left: 50%; transform: translateX(-50%); 
-            width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; 
-            border-top: 30px solid white; z-index: 10; filter: drop-shadow(0 0 5px rgba(0,0,0,0.5));
-        }
+        .slow-rotate { animation: rotate 20s linear infinite; }
+        @keyframes rotate { from { transform: rotate(0); } to { transform: rotate(360deg); } }
 
-        /* Элементы интерфейса */
-        .hud { margin-bottom: 20px; }
-        .timer { font-size: 3rem; font-weight: 900; color: var(--ton); text-shadow: 0 0 20px rgba(0,136,204,0.5); }
-        
-        .card { background: #0f0f0f; border: 1px solid #1a1a1a; border-radius: 24px; padding: 20px; margin-top: 15px; }
-        .input-group { display: flex; gap: 10px; margin-top: 10px; }
-        .input-field { flex: 1; background: #000; border: 1px solid #333; color: white; padding: 12px; border-radius: 14px; font-weight: bold; outline: none; }
-        .btn-main { background: var(--ton); color: white; border: none; padding: 12px 25px; border-radius: 14px; font-weight: 900; }
+        /* UI Elements */
+        .bank-info { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .bet-bar { display: flex; gap: 10px; margin-top: 20px; }
+        .input-main { flex: 1; background: #0a0a0a; border: 1px solid #222; color: white; padding: 14px; border-radius: 15px; font-weight: bold; outline: none; }
+        .btn-main { background: var(--ton); color: white; border: none; padding: 0 25px; border-radius: 15px; font-weight: 900; }
 
-        .player-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: #0a0a0a; border-radius: 16px; margin-bottom: 8px; border: 1px solid #111; }
+        .player-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: #0a0a0a; border-radius: 18px; margin-bottom: 10px; border: 1px solid #151515; }
         .player-item img { width: 35px; height: 35px; border-radius: 50%; border: 2px solid var(--ton); }
+        .player-info { flex: 1; text-align: left; }
+        .bet-val { color: var(--neon); font-weight: 900; margin-right: 5px; }
+
+        /* Profile */
+        .profile-card { background: #0a0a0a; padding: 30px; border-radius: 30px; border: 1px solid #1a1a1a; }
+        .btn-bot { background: #333; color: white; border: none; width: 100%; padding: 15px; border-radius: 15px; margin-top: 20px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; }
 
         .nav { position: fixed; bottom: 0; width: 100%; max-width: 450px; height: 75px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #111; }
-        .nav-item { color: #444; text-decoration: none; font-size: 10px; text-align: center; transition: 0.3s; }
+        .nav-item { color: #444; text-decoration: none; font-size: 10px; text-align: center; }
         .nav-item.active { color: white; }
-        .nav-item i { display: block; margin-bottom: 4px; }
+        .nav-item i { display: block; margin: 0 auto 4px auto; } /* Иконки по центру */
 
-        /* Окно победителя */
-        #win-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+        #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
         .win-box { background: #0f0f0f; border: 2px solid var(--ton); padding: 40px; border-radius: 35px; text-align: center; width: 80%; }
     </style>
 </head>
@@ -69,220 +59,175 @@
 
 <div id="app">
     <div class="content">
-        <!-- PAGE: GAME -->
-        <section id="page-game" class="page active">
-            <div class="hud">
-                <div id="timer-val" class="timer">15</div>
-                <div style="color: #666;">БАНК: <span id="bank-val" style="color: var(--neon-green); font-weight: 900;">0.00</span> TON</div>
-            </div>
+        <section id="pg-game" class="page active">
+            <h1 id="timer" style="font-size: 3rem; font-weight: 900; color: var(--ton);">15</h1>
+            <div class="bank-info">БАНК: <span id="bank" style="color: var(--neon); font-weight: 900;">0.00</span> TON</div>
 
             <div class="lollipop-box">
                 <div class="pointer"></div>
                 <div class="wheel-outer">
-                    <canvas id="wheel-canvas" width="500" height="500"></canvas>
+                    <canvas id="wheel" width="500" height="500" class="slow-rotate"></canvas>
                 </div>
-                <div class="lollipop-stick"></div>
+                <div class="stick"></div>
             </div>
 
-            <div class="input-group">
-                <input type="number" id="bet-input" class="input-field" value="1.0" step="0.1">
-                <button class="btn-main" onclick="sendBet()">СТАВИТЬ</button>
+            <div class="bet-bar">
+                <input type="number" id="bet-val" class="input-main" value="1.0" step="0.1">
+                <button class="btn-main" onclick="sendBet()">СТАВКА</button>
             </div>
-
-            <div id="players-list" style="margin-top: 20px;"></div>
+            <div id="list" style="margin-top: 20px;"></div>
         </section>
 
-        <!-- PAGE: PROFILE -->
-        <section id="page-profile" class="page">
-            <div class="card">
-                <img id="my-ava" style="width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--ton);">
-                <h2 id="my-name" style="margin-top: 15px; font-size: 1.5rem;">...</h2>
-                <p id="my-username" style="color: #666; margin-bottom: 20px;">@...</p>
-                <div style="background: #000; padding: 20px; border-radius: 20px;">
-                    <div style="font-size: 0.8rem; color: #444; margin-bottom: 5px;">ВАШ БАЛАНС</div>
-                    <div style="font-size: 2rem; font-weight: 900; color: var(--neon-green);"><span id="my-balance">0.00</span> TON</div>
+        <section id="pg-profile" class="page">
+            <div class="profile-card">
+                <img id="u-ava" style="width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--ton);">
+                <h2 id="u-name" style="margin-top:15px;">...</h2>
+                <p id="u-tag" style="color:#666; margin-bottom:20px;">@...</p>
+                <div style="background:#000; padding:20px; border-radius:20px;">
+                    <div style="color:#444; font-size:0.8rem; margin-bottom:5px;">БАЛАНС</div>
+                    <div style="font-size:2rem; font-weight:900; color:var(--neon);"><span id="u-bal">0.00</span> TON</div>
                 </div>
+                <button class="btn-bot" onclick="addBot()"><i data-lucide="bot"></i> Добавить бота</button>
             </div>
         </section>
     </div>
 
     <nav class="nav">
-        <a href="#" class="nav-item active" onclick="tab('page-game')"><i data-lucide="gamepad-2"></i>ИГРА</a>
-        <a href="#" class="nav-item" onclick="tab('page-profile')"><i data-lucide="user"></i>ПРОФИЛЬ</a>
+        <a href="#" class="nav-item active" onclick="nav('pg-game')"><i data-lucide="gamepad-2"></i>ИГРА</a>
+        <a href="#" class="nav-item" onclick="nav('pg-profile')"><i data-lucide="user"></i>ПРОФИЛЬ</a>
     </nav>
 </div>
 
-<div id="win-modal">
+<div id="modal">
     <div class="win-box">
-        <h3 style="color: #666; text-transform: uppercase; letter-spacing: 2px;">Победитель</h3>
-        <img id="win-ava" style="width: 90px; height: 90px; border-radius: 50%; margin: 20px 0; border: 3px solid var(--neon-green);">
-        <div id="win-name" style="font-weight: 900; font-size: 1.3rem;"></div>
-        <div id="win-sum" style="font-size: 2rem; color: var(--neon-green); font-weight: 900; margin-top: 10px;"></div>
+        <img id="w-ava" style="width: 90px; height: 90px; border-radius: 50%; margin-bottom: 20px; border: 3px solid var(--neon);">
+        <div id="w-name" style="font-weight:900; font-size:1.4rem;"></div>
+        <div id="w-sum" style="font-size:2.2rem; color:var(--neon); font-weight:900; margin-top:10px;"></div>
     </div>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
-    const API = 'http://localhost:3000/api'; // ЗАМЕНИТЬ НА РЕАЛЬНЫЙ URL ПОСЛЕ ДЕПЛОЯ
-    let user = null;
-    let isSpinning = false;
+    const API = 'http://localhost:3000/api'; 
+    let user = null, isSpin = false;
+    const canvas = document.getElementById('wheel'), ctx = canvas.getContext('2d');
 
-    const canvas = document.getElementById('wheel-canvas');
-    const ctx = canvas.getContext('2d');
-
-    async function init() {
+    async function auth() {
         lucide.createIcons();
         tg.expand();
-        tg.headerColor = "#050505";
-
-        // Получаем данные из Telegram или тестовые
-        const tgData = tg.initDataUnsafe.user || { id: 1234, first_name: "Test", username: "tester", photo_url: "" };
-        
-        try {
-            const res = await fetch(`${API}/auth`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(tgData)
-            });
-            user = await res.json();
-            updateProfile();
-            gameLoop();
-        } catch (e) {
-            console.error("Auth error", e);
-        }
+        const raw = tg.initDataUnsafe.user || { id: 777, first_name: "Player", username: "ton_user" };
+        const res = await fetch(`${API}/auth`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(raw)
+        });
+        user = await res.json();
+        updateUI();
+        setInterval(sync, 1000);
     }
 
-    function updateProfile() {
-        if(!user) return;
-        document.getElementById('my-ava').src = user.photo_url || `https://ui-avatars.com/api/?name=${user.name}`;
-        document.getElementById('my-name').innerText = user.name;
-        document.getElementById('my-username').innerText = '@' + user.username;
-        document.getElementById('my-balance').innerText = user.balance.toFixed(2);
+    function updateUI() {
+        document.getElementById('u-ava').src = user.photo_url;
+        document.getElementById('u-name').innerText = user.name;
+        document.getElementById('u-tag').innerText = '@' + user.username;
+        document.getElementById('u-bal').innerText = user.balance.toFixed(2);
     }
 
     async function sendBet() {
-        const amount = parseFloat(document.getElementById('bet-input').value);
-        if(!amount || amount <= 0) return;
-
+        const val = parseFloat(document.getElementById('bet-val').value);
         const res = await fetch(`${API}/bet`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ userId: user.id, amount })
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ userId: user.id, amount: val })
         });
         const data = await res.json();
-        if(data.success) {
-            user.balance = data.balance;
-            updateProfile();
-            tg.HapticFeedback.impactOccurred('medium');
+        if(data.success) { user.balance = data.balance; updateUI(); tg.HapticFeedback.impactOccurred('heavy'); }
+    }
+
+    async function addBot() {
+        await fetch(`${API}/add-bot`, { method: 'POST' });
+        tg.HapticFeedback.notificationOccurred('success');
+    }
+
+    function draw(players, bank) {
+        ctx.clearRect(0,0,500,500);
+        if(players.length === 0) {
+            const colors = ['#0088cc', '#ffffff', '#004466'];
+            for(let i=0; i<12; i++) {
+                ctx.beginPath(); ctx.moveTo(250,250);
+                ctx.arc(250,250,250, (i*Math.PI*2)/12, ((i+1)*Math.PI*2)/12);
+                ctx.fillStyle = colors[i%3]; ctx.fill();
+            }
         } else {
-            tg.showAlert(data.error);
+            let start = 0;
+            players.forEach(p => {
+                const slice = (p.bet / bank) * 2 * Math.PI;
+                ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.moveTo(250,250); ctx.arc(250,250,250, start, start+slice); ctx.fill();
+                const mid = start + slice/2;
+                const x = 250 + Math.cos(mid)*160, y = 250 + Math.sin(mid)*160;
+                ctx.save(); ctx.beginPath(); ctx.arc(x,y,35,0,7); ctx.clip();
+                const img = new Image(); img.crossOrigin = "anonymous"; img.src = p.photo_url;
+                try { ctx.drawImage(img, x-35, y-35, 70, 70); } catch(e){}
+                ctx.restore();
+                start += slice;
+            });
         }
     }
 
-    function drawCandySpiral() {
-        ctx.clearRect(0,0,500,500);
-        const colors = ['#0088cc', '#ffffff', '#004466'];
-        for (let i = 0; i < 12; i++) {
-            ctx.beginPath();
-            ctx.moveTo(250, 250);
-            ctx.arc(250, 250, 250, (i * Math.PI * 2) / 12, ((i + 1) * Math.PI * 2) / 12);
-            ctx.fillStyle = colors[i % 3];
-            ctx.fill();
+    async function sync() {
+        const res = await fetch(`${API}/status`);
+        const st = await st_res = await res.json();
+        document.getElementById('bank').innerText = st.totalBank.toFixed(2);
+        const timer = document.getElementById('timer');
+
+        if(st.status === 'waiting') {
+            timer.innerText = "WAIT";
+            if(isSpin) resetWheel();
+        } else if(st.status === 'countdown') {
+            timer.innerText = st.timer;
+        } else if(st.status === 'spinning' && !isSpin) {
+            startRoulette(st);
         }
-        // Блик
-        const grad = ctx.createRadialGradient(150, 150, 10, 250, 250, 250);
-        grad.addColorStop(0, 'rgba(255,255,255,0.2)');
-        grad.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0,0,500,500);
+
+        if(!isSpin) draw(st.players, st.totalBank);
+        
+        document.getElementById('list').innerHTML = st.players.map(p => `
+            <div class="player-item">
+                <img src="${p.photo_url}">
+                <div class="player-info">
+                    <div style="font-weight:bold; display:flex; align-items:center; gap:5px;"><i data-lucide="user" size="14"></i> ${p.name}</div>
+                    <div style="font-size:0.7rem; color:#444">@${p.username}</div>
+                </div>
+                <div style="text-align:right">
+                    <div><span class="bet-val">${p.bet.toFixed(1)}</span><small>TON</small></div>
+                    <div style="color:var(--ton); font-weight:900; font-size:0.8rem">${((p.bet/st.totalBank)*100).toFixed(1)}%</div>
+                </div>
+            </div>
+        `).join('');
+        lucide.createIcons();
     }
 
-    function drawPlayers(players, bank) {
-        ctx.clearRect(0,0,500,500);
-        let start = 0;
-        players.forEach(p => {
-            const slice = (p.bet / bank) * 2 * Math.PI;
-            ctx.fillStyle = p.color;
-            ctx.beginPath(); ctx.moveTo(250,250); ctx.arc(250,250,250, start, start+slice); ctx.fill();
-            
-            // Аватарка внутри сектора
-            const mid = start + slice/2;
-            const x = 250 + Math.cos(mid) * 160;
-            const y = 250 + Math.sin(mid) * 160;
-            ctx.save();
-            ctx.beginPath(); ctx.arc(x,y,35,0,7); ctx.clip();
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.src = p.photo_url || `https://ui-avatars.com/api/?name=${p.name}`;
-            try { ctx.drawImage(img, x-35, y-35, 70, 70); } catch(e){}
-            ctx.restore();
-            start += slice;
-        });
+    function startRoulette(st) {
+        isSpin = true;
+        canvas.classList.remove('slow-rotate');
+        canvas.style.transform = `rotate(${3600 + st.winningAngle}deg)`;
+        setTimeout(() => {
+            document.getElementById('w-ava').src = st.winner.photo_url;
+            document.getElementById('w-name').innerText = st.winner.name;
+            document.getElementById('w-sum').innerText = '+' + st.totalBank.toFixed(2) + ' TON';
+            document.getElementById('modal').style.display = 'flex';
+        }, 8500);
     }
 
-    function gameLoop() {
-        setInterval(async () => {
-            try {
-                const res = await fetch(`${API}/status`);
-                const game = await res.json();
-
-                document.getElementById('bank-val').innerText = game.totalBank.toFixed(2);
-                
-                const timerEl = document.getElementById('timer-val');
-                if(game.status === 'waiting') timerEl.innerText = "WAIT";
-                else if(game.status === 'countdown') timerEl.innerText = game.timer;
-                else timerEl.innerText = "!!!";
-
-                if(game.status === 'spinning' && !isSpinning) {
-                    isSpinning = true;
-                    canvas.style.transform = `rotate(${3600 + game.winningAngle}deg)`;
-                    setTimeout(() => {
-                        document.getElementById('win-ava').src = game.winner.photo_url || '';
-                        document.getElementById('win-name').innerText = game.winner.name;
-                        document.getElementById('win-sum').innerText = '+' + game.totalBank.toFixed(2) + ' TON';
-                        document.getElementById('win-modal').style.display = 'flex';
-                        tg.HapticFeedback.notificationOccurred('success');
-                        // Обновляем баланс после победы
-                        if(game.winner.id === user.id) {
-                             setTimeout(() => {
-                                 fetch(`${API}/auth`, {
-                                    method: 'POST',
-                                    headers: {'Content-Type': 'application/json'},
-                                    body: JSON.stringify({id: user.id})
-                                 }).then(r => r.json()).then(d => { user = d; updateProfile(); });
-                             }, 1000);
-                        }
-                    }, 8500);
-                }
-
-                if(game.status === 'waiting' && isSpinning) {
-                    isSpinning = false;
-                    document.getElementById('win-modal').style.display = 'none';
-                    canvas.style.transition = 'none';
-                    canvas.style.transform = 'rotate(0deg)';
-                    setTimeout(() => canvas.style.transition = 'transform 8s cubic-bezier(0.15, 0, 0.15, 1)', 100);
-                }
-
-                if(!isSpinning) {
-                    if(game.players.length === 0) drawCandySpiral();
-                    else drawPlayers(game.players, game.totalBank);
-                }
-
-                document.getElementById('players-list').innerHTML = game.players.map(p => `
-                    <div class="player-item">
-                        <img src="${p.photo_url || ''}">
-                        <div style="flex:1">
-                            <div style="font-weight:bold">${p.name}</div>
-                            <div style="font-size:0.7rem; color:#444">@${p.username}</div>
-                        </div>
-                        <div style="color:var(--neon-green); font-weight:900">${((p.bet/game.totalBank)*100).toFixed(1)}%</div>
-                    </div>
-                `).join('');
-            } catch (e) {}
-        }, 1000);
+    function resetWheel() {
+        isSpin = false;
+        document.getElementById('modal').style.display = 'none';
+        canvas.classList.add('slow-rotate');
+        canvas.style.transition = 'none';
+        canvas.style.transform = 'rotate(0deg)';
+        setTimeout(() => canvas.style.transition = 'transform 8s cubic-bezier(0.15, 0, 0.15, 1)', 100);
     }
 
-    function tab(id) {
+    function nav(id) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -290,7 +235,7 @@
         lucide.createIcons();
     }
 
-    init();
+    auth();
 </script>
 </body>
 </html>
