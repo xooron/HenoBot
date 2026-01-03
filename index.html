@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TON Candy Roulette</title>
+    <title>Candy Roulette</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -17,7 +17,7 @@
         .page { display: none; }
         .active { display: block; }
 
-        /* Lollipop Roulette */
+        /* Lollipop */
         .lollipop-box { position: relative; width: 280px; height: 360px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
         .lollipop-stick { 
             position: absolute; top: 130px; width: 14px; height: 160px; 
@@ -42,18 +42,36 @@
         .card { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 24px; padding: 20px; margin-top: 15px; }
         .bet-bar { display: flex; gap: 10px; margin-top: 10px; }
         .input-bet { flex: 1; background: #000; border: 1px solid #333; color: white; padding: 12px; border-radius: 14px; font-weight: bold; outline: none; }
-        .btn-bet { background: var(--ton); color: white; border: none; padding: 0 25px; border-radius: 14px; font-weight: 900; }
+        
+        /* Кнопка с идеальным выравниванием иконки */
+        .btn-bet { 
+            background: var(--ton); color: white; border: none; padding: 0 25px; border-radius: 14px; 
+            font-weight: 900; display: flex; align-items: center; gap: 8px; justify-content: center;
+        }
 
         .player-row { display: flex; align-items: center; gap: 12px; padding: 12px; background: #0a0a0a; border-radius: 18px; margin-bottom: 8px; border: 1px solid #151515; }
         .player-row img { width: 35px; height: 35px; border-radius: 50%; border: 2px solid var(--ton); }
         
-        .nav { position: fixed; bottom: 0; width: 100%; max-width: 450px; height: 75px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #111; }
-        .nav-item { color: #444; text-decoration: none; font-size: 10px; text-align: center; }
+        /* Навигация с идеальным выравниванием */
+        .nav { 
+            position: fixed; bottom: 0; width: 100%; max-width: 450px; height: 75px; 
+            background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #111; 
+        }
+        .nav-item { 
+            color: #444; text-decoration: none; font-size: 10px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+        }
         .nav-item.active { color: white; }
-        .nav-item i { display: block; margin-bottom: 4px; }
+        .nav-item i { width: 20px; height: 20px; }
 
         #win-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
         .win-box { background: #0f0f0f; border: 2px solid var(--ton); padding: 40px; border-radius: 35px; text-align: center; width: 80%; }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1);
+            width: 100%; padding: 12px; border-radius: 12px; font-weight: bold; margin-top: 15px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
     </style>
 </head>
 <body>
@@ -75,7 +93,9 @@
 
             <div class="bet-bar">
                 <input type="number" id="bet-input" class="input-bet" value="1.0" step="0.1">
-                <button class="btn-bet" onclick="placeBet()">СТАВКА</button>
+                <button class="btn-bet" onclick="placeBet()">
+                    <i data-lucide="play" size="18"></i> СТАВКА
+                </button>
             </div>
             <div id="list" style="margin-top: 20px;"></div>
         </section>
@@ -90,13 +110,22 @@
                     <div style="font-size: 0.8rem; color: #444; margin-bottom: 5px;">БАЛАНС</div>
                     <div style="font-size: 2rem; font-weight: 900; color: var(--neon);"><span id="u-bal">0.00</span> TON</div>
                 </div>
+
+                <!-- Кнопка добавления бота -->
+                <button class="btn-secondary" onclick="addBotBet()">
+                    <i data-lucide="bot"></i> ТЕСТОВАЯ СТАВКА БОТА
+                </button>
             </div>
         </section>
     </div>
 
     <nav class="nav">
-        <a href="#" class="nav-item active" onclick="nav('p-game')"><i data-lucide="gamepad-2"></i>ИГРА</a>
-        <a href="#" class="nav-item" onclick="nav('p-profile')"><i data-lucide="user"></i>ПРОФИЛЬ</a>
+        <a href="#" class="nav-item active" onclick="nav('p-game')">
+            <i data-lucide="gamepad-2"></i><span>ИГРА</span>
+        </a>
+        <a href="#" class="nav-item" onclick="nav('p-profile')">
+            <i data-lucide="user"></i><span>ПРОФИЛЬ</span>
+        </a>
     </nav>
 </div>
 
@@ -110,7 +139,7 @@
 
 <script>
     const tg = window.Telegram.WebApp;
-    const API = 'http://localhost:3000/api'; // Замени на свой URL после деплоя
+    const API = 'http://localhost:3000/api'; // Замени на свой URL
     let user = null, spinning = false;
 
     const canvas = document.getElementById('wheel'), ctx = canvas.getContext('2d');
@@ -146,6 +175,16 @@
         const data = await res.json();
         if(data.success) { user.balance = data.balance; updateUI(); tg.HapticFeedback.impactOccurred('medium'); }
         else tg.showAlert(data.error);
+    }
+
+    // Функция добавления бота
+    async function addBotBet() {
+        const res = await fetch(`${API}/add-bot-bet`, { method: 'POST' });
+        const data = await res.json();
+        if(data.success) {
+            tg.HapticFeedback.notificationOccurred('success');
+            nav('p-game'); // Перекидываем на игру, чтобы видеть результат
+        }
     }
 
     function draw(players, bank) {
@@ -213,13 +252,15 @@
                 <div style="color:var(--neon); font-weight:900">${((p.bet/game.totalBank)*100).toFixed(1)}%</div>
             </div>
         `).join('');
+        lucide.createIcons();
     }
 
     function nav(id) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        event.currentTarget.classList.add('active');
+        const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(n => n.getAttribute('onclick').includes(id));
+        if(activeNav) activeNav.classList.add('active');
         lucide.createIcons();
     }
 
