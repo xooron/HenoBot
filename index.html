@@ -3,320 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Candy TON Roulette</title>
+    <title>Candy Spin</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        :root {
-            --bg-black: #050505;
-            --ton-blue: #24a1de;
-            --glass: rgba(255, 255, 255, 0.05);
-        }
+        :root { --ton: #24a1de; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
+        body { background: #000; color: white; height: 100vh; overflow: hidden; position: relative; }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        
-        body { 
-            background: var(--bg-black); 
-            color: white; 
-            height: 100vh; 
-            overflow: hidden; 
-            position: relative;
-        }
-
-        /* Анимированный фон с карамельками */
-        .bg-animation {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -1; overflow: hidden; pointer-events: none;
-        }
-        .candy-particle {
-            position: absolute; bottom: -50px;
-            width: 20px; height: 20px;
-            background: url('https://cdn-icons-png.flaticon.com/512/2650/2650055.png'); /* Темная иконка леденца */
-            background-size: contain;
-            opacity: 0.15;
-            filter: grayscale(1) brightness(0.5);
-            animation: floatUp 15s linear infinite;
-        }
-        @keyframes floatUp {
-            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
-            10% { opacity: 0.15; }
-            90% { opacity: 0.15; }
-            100% { transform: translateY(-110vh) rotate(360deg); opacity: 0; }
-        }
+        /* Фон с карамельками */
+        #bg-canvas { position: fixed; top:0; left:0; z-index:-1; }
 
         #app { display: flex; flex-direction: column; height: 100%; max-width: 450px; margin: 0 auto; }
-        .content { flex: 1; overflow-y: auto; padding: 20px 20px 100px; z-index: 10; }
+        .content { flex: 1; overflow-y: auto; padding: 20px 20px 100px; text-align: center; }
         .page { display: none; }
         .active { display: block; }
 
-        /* Рулетка-леденец */
-        .roulette-box { position: relative; width: 280px; height: 360px; margin: 20px auto; display: flex; flex-direction: column; align-items: center; }
-        .wheel-wrap { 
-            width: 260px; height: 260px; position: relative; 
-            border: 8px solid #1a1a1a; border-radius: 50%;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
-        }
-        #wheel-canvas { width: 100%; height: 100%; border-radius: 50%; transition: transform 8s cubic-bezier(0.15, 0, 0.15, 1); }
-        .pointer { 
-            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
-            width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent;
-            border-top: 30px solid #fff; z-index: 20;
-        }
-        .stick { width: 12px; height: 100px; background: #1a1a1a; border-radius: 0 0 10px 10px; }
+        /* Рулетка */
+        .roulette-container { position: relative; width: 260px; height: 260px; margin: 20px auto; }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; border: 5px solid #222; transition: transform 8s cubic-bezier(0.15, 0, 0.15, 1); }
+        .pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid white; z-index: 10; }
+        .slow-spin { animation: rotate 10s linear infinite; }
+        @keyframes rotate { from { transform: rotate(0); } to { transform: rotate(360deg); } }
 
-        /* Профиль */
-        .profile-ui { text-align: center; background: var(--glass); padding: 30px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); }
-        .avatar-main { width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--ton-blue); margin-bottom: 15px; }
-        .user-nick { font-weight: 900; font-size: 1.5rem; }
-        .user-tag { color: #888; font-size: 0.9rem; margin-bottom: 20px; }
-
-        /* Ставки */
-        .bet-bar { display: flex; gap: 10px; margin: 20px 0; }
-        .bet-input { flex: 1; background: #111; border: 1px solid #333; padding: 15px; border-radius: 15px; color: white; outline: none; }
-        .bet-btn { background: var(--ton-blue); color: white; border: none; padding: 0 25px; border-radius: 15px; font-weight: bold; }
-
-        .player-card { display: flex; align-items: center; gap: 12px; background: var(--glass); padding: 10px; border-radius: 12px; margin-bottom: 8px; }
-        .player-card img { width: 35px; height: 35px; border-radius: 50%; }
-
-        .nav-bar { position: fixed; bottom: 20px; left: 20px; right: 20px; height: 70px; background: rgba(10,10,10,0.8); backdrop-filter: blur(15px); border-radius: 20px; display: flex; justify-content: space-around; align-items: center; border: 1px solid rgba(255,255,255,0.05); }
-        .nav-item { color: #555; text-decoration: none; font-size: 10px; text-align: center; }
+        /* UI */
+        .card { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 20px; margin-top: 15px; border: 1px solid rgba(255,255,255,0.1); }
+        .bet-input { background: #111; border: 1px solid #333; color: white; padding: 12px; border-radius: 12px; width: 60%; outline: none; }
+        .btn { background: var(--ton); color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; }
+        
+        .nav { position: fixed; bottom: 0; width: 100%; max-width: 450px; height: 70px; background: #0a0a0a; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #222; }
+        .nav-item { color: #555; text-decoration: none; font-size: 12px; text-align: center; }
         .nav-item.active { color: white; }
 
-        #winner-pop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
-        .pop-card { background: #111; padding: 40px; border-radius: 30px; text-align: center; border: 2px solid var(--ton-blue); }
+        #winner-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; }
+        .avatar-l { width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--ton); }
     </style>
 </head>
 <body>
 
-<div class="bg-animation" id="bg-candies"></div>
+<canvas id="bg-canvas"></canvas>
 
 <div id="app">
     <div class="content">
-        <!-- ГЛАВНАЯ (ИГРА) -->
-        <section id="game-page" class="page active">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h1 id="timer-label" style="font-size: 2.5rem; font-weight: 900; color: var(--ton-blue);">ОЖИДАНИЕ</h1>
-                <p>БАНК: <span id="bank-val">0.00</span> TON</p>
-            </div>
+        <!-- ИГРА -->
+        <section id="game" class="page active">
+            <h1 id="timer" style="font-size: 2.5rem; color: var(--ton);">ОЖИДАНИЕ</h1>
+            <p>Банк: <span id="bank">0</span> TON</p>
 
-            <div class="roulette-box">
+            <div class="roulette-container">
                 <div class="pointer"></div>
-                <div class="wheel-wrap">
-                    <canvas id="wheel-canvas" width="500" height="500"></canvas>
-                </div>
-                <div class="stick"></div>
+                <canvas id="wheel" width="500" height="500" class="slow-spin"></canvas>
             </div>
 
-            <div class="bet-bar">
-                <input type="number" id="bet-val" class="bet-input" placeholder="Ставка TON..." step="0.1">
-                <button class="bet-btn" onclick="placeBet()">СТАВИТЬ</button>
+            <div class="card">
+                <input type="number" id="amount" class="bet-input" placeholder="Сумма...">
+                <button class="btn" onclick="makeBet()">СТАВКА</button>
             </div>
-
-            <div id="players-list"></div>
+            
+            <div id="players" style="margin-top: 20px;"></div>
         </section>
 
         <!-- ПРОФИЛЬ -->
-        <section id="profile-page" class="page">
-            <div class="profile-ui">
-                <img id="u-avatar" class="avatar-main" src="">
-                <div id="u-name" class="user-nick">Загрузка...</div>
-                <div id="u-tag" class="user-tag">@...</div>
-                <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 20px;">
-                    <p style="font-size: 0.8rem; color: #888;">ВАШ БАЛАНС</p>
-                    <h2 style="font-size: 2rem; color: #2ecc71;"><span id="u-balance">0.00</span> TON</h2>
-                </div>
+        <section id="profile" class="page">
+            <div class="card">
+                <img id="my-avatar" class="avatar-l" src="">
+                <h2 id="my-name" style="margin-top:10px;">...</h2>
+                <p id="my-tag" style="color:#777;">@...</p>
+                <div style="margin-top:20px; font-size: 1.5rem;">Баланс: <b id="my-balance" style="color:#4cd964;">0</b> TON</div>
             </div>
         </section>
     </div>
 
-    <nav class="nav-bar">
-        <a href="#" class="nav-item active" onclick="nav('game-page')"><i data-lucide="gamepad-2"></i><div>ИГРА</div></a>
-        <a href="#" class="nav-item" onclick="nav('profile-page')"><i data-lucide="user"></i><div>ПРОФИЛЬ</div></a>
+    <nav class="nav">
+        <div class="nav-item active" onclick="tab('game')"><i data-lucide="gamepad-2"></i><div>Игра</div></div>
+        <div class="nav-item" onclick="tab('profile')"><i data-lucide="user"></i><div>Профиль</div></div>
     </nav>
 </div>
 
-<div id="winner-pop">
-    <div class="pop-card">
-        <h2 style="color: gold">ПОБЕДИТЕЛЬ</h2>
-        <img id="w-img" style="width: 80px; height: 80px; border-radius: 50%; margin: 20px 0;">
-        <div id="w-name" style="font-weight: bold; font-size: 1.2rem;"></div>
-        <h1 id="w-win" style="color: #2ecc71; margin-top: 10px;"></h1>
-        <button onclick="closePop()" style="margin-top: 20px; padding: 10px 30px; border-radius: 10px; background: var(--ton-blue); color: white; border: none;">ЗАКРЫТЬ</button>
+<div id="winner-modal">
+    <div class="card" style="text-align:center; width: 80%;">
+        <h2 style="color: gold;">ПОБЕДИТЕЛЬ!</h2>
+        <img id="w-img" class="avatar-l" style="margin: 15px 0;">
+        <div id="w-name" style="font-weight:bold;"></div>
+        <h1 id="w-sum" style="color:#4cd964;"></h1>
+        <button class="btn" style="margin-top:20px; width:100%;" onclick="document.getElementById('winner-modal').style.display='none'">ЗАКРЫТЬ</button>
     </div>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
-    const API = 'http://localhost:3000/api';
-    let user = null;
-    let game = { status: 'waiting', players: [] };
-    const canvas = document.getElementById('wheel-canvas');
-    const ctx = canvas.getContext('2d');
+    // ЗАМЕНИ ЭТУ ССЫЛКУ на свой URL после деплоя на Render
+    const API_URL = 'https://твой-бэкенд.onrender.com'; 
+    
+    let me = null;
+    let currentStatus = '';
 
-    lucide.createIcons();
-    tg.expand();
-
-    // Создаем летящие карамельки
-    function createCandies() {
-        const container = document.getElementById('bg-candies');
-        for(let i=0; i<15; i++) {
-            const candy = document.createElement('div');
-            candy.className = 'candy-particle';
-            candy.style.left = Math.random() * 100 + '%';
-            candy.style.animationDelay = Math.random() * 15 + 's';
-            container.appendChild(candy);
-        }
+    // Фоновые карамельки
+    const bgCanvas = document.getElementById('bg-canvas');
+    const bctx = bgCanvas.getContext('2d');
+    let particles = [];
+    function initParticles() {
+        bgCanvas.width = window.innerWidth;
+        bgCanvas.height = window.innerHeight;
+        for(let i=0; i<20; i++) particles.push({ x: Math.random()*bgCanvas.width, y: Math.random()*bgCanvas.height, s: Math.random()*2+1, r: Math.random()*Math.PI });
+    }
+    function drawParticles() {
+        bctx.clearRect(0,0,bgCanvas.width, bgCanvas.height);
+        bctx.fillStyle = 'rgba(255,255,255,0.05)';
+        particles.forEach(p => {
+            p.y -= p.s;
+            if(p.y < -20) p.y = bgCanvas.height + 20;
+            bctx.beginPath();
+            bctx.arc(p.x, p.y, 5, 0, 7);
+            bctx.fill();
+        });
+        requestAnimationFrame(drawParticles);
     }
 
     async function auth() {
-        const rawUser = tg.initDataUnsafe.user || { id: 999, first_name: "Gamer", username: "player" };
-        const res = await fetch(`${API}/auth`, {
+        const user = tg.initDataUnsafe.user || { id: 123, first_name: "Tester", username: "test" };
+        const res = await fetch(`${API_URL}/api/auth`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(rawUser)
+            body: JSON.stringify(user)
         });
-        user = await res.json();
+        me = await res.json();
         updateUI();
-        sync();
     }
 
     function updateUI() {
-        document.getElementById('u-avatar').src = user.photo_url;
-        document.getElementById('u-name').innerText = user.first_name;
-        document.getElementById('u-tag').innerText = '@' + user.username;
-        document.getElementById('u-balance').innerText = user.balance.toFixed(2);
+        document.getElementById('my-avatar').src = me.photo_url;
+        document.getElementById('my-name').innerText = me.name;
+        document.getElementById('my-tag').innerText = '@' + me.username;
+        document.getElementById('my-balance').innerText = me.balance.toFixed(2);
     }
 
-    function nav(id) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-        event.currentTarget.classList.add('active');
-    }
-
-    async function placeBet() {
-        const val = parseFloat(document.getElementById('bet-val').value);
-        if(!val || val <= 0) return;
-        const res = await fetch(`${API}/bet`, {
+    async function makeBet() {
+        const amount = parseFloat(document.getElementById('amount').value);
+        if(!amount || amount <= 0) return;
+        const res = await fetch(`${API_URL}/api/bet`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ userId: user.id, amount: val })
+            body: JSON.stringify({ userId: me.id, amount })
         });
         const data = await res.json();
         if(data.success) {
-            user.balance = data.newBalance;
+            me.balance = data.balance;
             updateUI();
             tg.HapticFeedback.impactOccurred('medium');
-        } else tg.showAlert(data.error);
+        }
     }
 
-    function drawWheel() {
-        ctx.clearRect(0, 0, 500, 500);
-        if (game.players.length === 0) {
-            // Рисуем пустой леденец (спираль)
-            ctx.beginPath();
-            ctx.arc(250, 250, 240, 0, Math.PI*2);
-            ctx.fillStyle = '#111';
-            ctx.fill();
-            ctx.strokeStyle = '#222';
-            ctx.lineWidth = 15;
-            for(let i=0; i<5; i++) {
-                ctx.beginPath(); ctx.arc(250, 250, i*40, 0, Math.PI*2); ctx.stroke();
-            }
+    const wheel = document.getElementById('wheel');
+    const wctx = wheel.getContext('2d');
+
+    function drawWheel(players, total) {
+        wctx.clearRect(0,0,500,500);
+        let start = 0;
+        if(players.length === 0) {
+            wctx.fillStyle = '#111';
+            wctx.beginPath(); wctx.arc(250,250,240,0,7); wctx.fill();
             return;
         }
-
-        let startAngle = 0;
-        game.players.forEach(p => {
-            const slice = (p.bet / game.totalBank) * 2 * Math.PI;
-            ctx.beginPath();
-            ctx.moveTo(250, 250);
-            ctx.arc(250, 250, 240, startAngle, startAngle + slice);
-            ctx.fillStyle = p.color;
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-            ctx.stroke();
-
-            // Аватарка
-            const mid = startAngle + slice/2;
-            const x = 250 + Math.cos(mid) * 160;
-            const y = 250 + Math.sin(mid) * 160;
+        players.forEach(p => {
+            const slice = (p.bet / total) * 2 * Math.PI;
+            wctx.fillStyle = p.color;
+            wctx.beginPath(); wctx.moveTo(250,250); wctx.arc(250,250,245,start, start+slice); wctx.fill();
             
-            ctx.save();
-            ctx.beginPath(); ctx.arc(x, y, 30, 0, Math.PI*2); ctx.clip();
+            // Аватарка
+            const mid = start + slice/2;
+            const x = 250 + Math.cos(mid) * 170;
+            const y = 250 + Math.sin(mid) * 170;
+            wctx.save();
+            wctx.beginPath(); wctx.arc(x,y,30,0,7); wctx.clip();
             const img = new Image(); img.src = p.photo_url;
-            ctx.drawImage(img, x-30, y-30, 60, 60);
-            ctx.restore();
-
-            startAngle += slice;
+            try { wctx.drawImage(img, x-30, y-30, 60, 60); } catch(e){}
+            wctx.restore();
+            start += slice;
         });
     }
 
-    let isSpinning = false;
     async function sync() {
-        setInterval(async () => {
-            const res = await fetch(`${API}/game-status`);
-            const state = await res.json();
+        const res = await fetch(`${API_URL}/api/status`);
+        const state = await res.json();
 
-            if (state.status === 'spinning' && !isSpinning) {
-                runAnimation(state.winningAngle, state.winner);
-            }
+        document.getElementById('bank').innerText = state.totalBank.toFixed(2);
+        const timerEl = document.getElementById('timer');
 
-            if (state.status !== 'spinning' && state.status !== 'result') {
-                isSpinning = false;
-                canvas.style.transition = 'none';
-                canvas.style.transform = 'rotate(0deg)';
-                drawWheel();
-            }
+        if(state.status === 'waiting') timerEl.innerText = 'ОЖИДАНИЕ';
+        if(state.status === 'countdown') timerEl.innerText = state.timer;
+        if(state.status === 'spinning' && currentStatus !== 'spinning') {
+            currentStatus = 'spinning';
+            wheel.classList.remove('slow-spin');
+            wheel.style.transform = `rotate(${3600 + state.winningAngle}deg)`;
+            setTimeout(() => {
+                document.getElementById('w-img').src = state.winner.photo_url;
+                document.getElementById('w-name').innerText = state.winner.name;
+                document.getElementById('w-sum').innerText = '+' + state.totalBank.toFixed(2) + ' TON';
+                document.getElementById('winner-modal').style.display = 'flex';
+                tg.HapticFeedback.notificationOccurred('success');
+            }, 8500);
+        }
+        if(state.status === 'waiting') {
+            currentStatus = 'waiting';
+            wheel.classList.add('slow-spin');
+            wheel.style.transform = 'rotate(0)';
+        }
 
-            game = state;
-            updateGameUI();
-        }, 1000);
-    }
-
-    function updateGameUI() {
-        const label = document.getElementById('timer-label');
-        if(game.status === 'waiting') label.innerText = "ОЖИДАНИЕ";
-        else if(game.status === 'countdown') label.innerText = game.timer;
-        else label.innerText = "КРУТИМ!";
-
-        document.getElementById('bank-val').innerText = game.totalBank.toFixed(2);
-        const list = document.getElementById('players-list');
-        list.innerHTML = game.players.map(p => `
-            <div class="player-card">
-                <img src="${p.photo_url}">
-                <div style="flex:1"><b>${p.name}</b></div>
-                <div style="font-weight:900; color:var(--ton-blue)">${((p.bet/game.totalBank)*100).toFixed(1)}%</div>
+        drawWheel(state.players, state.totalBank);
+        
+        document.getElementById('players').innerHTML = state.players.map(p => `
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px; background:rgba(255,255,255,0.05); padding:10px; border-radius:10px;">
+                <span>${p.name}</span>
+                <span style="color:var(--ton)">${((p.bet/state.totalBank)*100).toFixed(1)}%</span>
             </div>
         `).join('');
     }
 
-    function runAnimation(angle, winner) {
-        isSpinning = true;
-        const totalRotation = 3600 + angle; // 10 кругов + угол
-        canvas.style.transition = 'transform 8s cubic-bezier(0.15, 0, 0.15, 1)';
-        canvas.style.transform = `rotate(${totalRotation}deg)`;
-
-        setTimeout(() => {
-            showWinner(winner);
-        }, 8500);
+    function tab(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        lucide.createIcons();
     }
 
-    function showWinner(winner) {
-        document.getElementById('w-img').src = winner.photo_url;
-        document.getElementById('w-name').innerText = winner.name + ' (@' + winner.username + ')';
-        document.getElementById('w-win').innerText = '+' + game.totalBank.toFixed(2) + ' TON';
-        document.getElementById('winner-pop').style.display = 'flex';
-        tg.HapticFeedback.notificationOccurred('success');
-    }
-
-    function closePop() {
-        document.getElementById('winner-pop').style.display = 'none';
-    }
-
-    createCandies();
+    lucide.createIcons();
+    initParticles();
+    drawParticles();
     auth();
+    setInterval(sync, 1000);
 </script>
 </body>
 </html>
